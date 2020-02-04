@@ -16,27 +16,31 @@ from tensorflow.python.keras.callbacks import EarlyStopping
 
 class TextClassifier:
     
-    def __init__(self, max_word_count = 50000, max_sequence_len = 100, word_embedding_dim = 50):
+    def __init__(self, tokenizer, label_index, max_word_count = 50000, max_sequence_len = 100, word_embedding_dim = 50):
         self.max_word_count = max_word_count
         self.max_sequence_len = max_sequence_len
         self.embedding_dim = word_embedding_dim
-        self.tokenizer = None
-        self.label_index = None
+        self.tokenizer = tokenizer
+        self.label_index = label_index
         self.model_lstm = None
         self.model_cnn = None
         self.model_mlp = None
 
     def train_LSTM(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, reg = 0.01):
 
+        flatten_y = [category for sublist in y_train for category in sublist]
+        class_weights = class_weight.compute_class_weight('balanced', np.unique(flatten_y), flatten_y)
+        optim = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+        
         model = models.Sequential()
         model.add(Embedding(self.max_word_count, self.embedding_dim))
         model.add(SpatialDropout1D(0.2))
         model.add(LSTM(100, dropout=0.2, recurrent_dropout=0.2))
         model.add(Dense(32, activation='relu'))
         model.add(Dense(8, activation='sigmoid'))
-        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['categorical_accuracy'])
+        model.compile(loss='binary_crossentropy', optimizer=optim, metrics=['categorical_accuracy'])
 
-        history = model.fit(X_train, y_train, epochs = epochs,
+        history = model.fit(X_train, y_train, class_weight = class_weight, epochs = epochs,
                     batch_size=batch_size, validation_split=0.1,
                     callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
         
@@ -179,7 +183,25 @@ class TextClassifier:
         
         return history
         
-    
+
+def tokenize_data(X, y, max_word_count=50000, max_sequence_len=100):
+
+    tokenizer = Tokenizer(num_words=max_word_count, filters='!"#$%&()*+,-./:;<=>?@[\]^_`{|}~', lower=True)
+    tokenizer.fit_on_texts(X)
+    word_index = tokenizer.word_index
+
+    X_tokenized = tokenizer.texts_to_sequences(X)
+    X_tokenized = pad_sequences(X_tokenized, maxlen = max_sequence_len)
+
+    mlb = MultiLabelBinarizer()
+    y_tokenized = mlb.fit_transform(y)
+
+    label_index = mlb.classes_
+
+    print('Shape of data tensor:', X.shape)
+    print('Found %s unique tokens.' % len(word_index))
+
+    return X_tokenized, y_tokenized, tokenizer, label_index
 
 def split_to_sentences(paragraph):
     return tokenize.sent_tokenize(paragraph)
