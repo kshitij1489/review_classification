@@ -26,11 +26,11 @@ class TextClassifier:
         self.model_cnn = None
         self.model_mlp = None
 
-    def train_LSTM_1(self, X_train, y_train, epochs = 5, batch_size = 64):
+    def train_LSTM(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, reg = 0.01):
 
         model = models.Sequential()
         model.add(Embedding(self.max_word_count, self.embedding_dim))
-        model.add(SpatialDropout1D(rate=0.2))
+        model.add(SpatialDropout1D(0.2))
         model.add(LSTM(100, dropout=0.2, recurrent_dropout=0.2))
         model.add(Dense(32, activation='relu'))
         model.add(Dense(8, activation='sigmoid'))
@@ -43,28 +43,33 @@ class TextClassifier:
         self.model_lstm = model
         return history
 
-    def train_LSTM(self, X_train, y_train, epochs = 5, batch_size = 64):
+    def train_LSTM_1(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, reg = 0.01):
 
+        flatten_y = [category for sublist in y_train for category in sublist]
+        class_weights = class_weight.compute_class_weight('balanced', np.unique(flatten_y), flatten_y)
+        optim = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+        
         model = models.Sequential()
         model.add(Embedding(self.max_word_count, 64))
         model.add(Bidirectional(LSTM(64, return_sequences=True)))
         model.add(Bidirectional(LSTM(32)))
-        model.add(Dense(64, activation='relu'))
+        model.add(Dense(64, kernel_regularizer=regularizers.l2(reg), activation='relu'))
         model.add(Dropout(0.5))
         model.add(Dense(8, activation='sigmoid'))
-        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['categorical_accuracy'])
+        model.compile(loss='binary_crossentropy', optimizer=optim, metrics=['categorical_accuracy'])
         
-        history = model.fit(X_train, y_train, epochs = epochs,
+        history = model.fit(X_train, y_train, class_weight = class_weight, epochs = epochs,
             batch_size=batch_size, validation_split=0.1,
             callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
 
         self.model_lstm = model
         return history
     
-    def train_CNN(self, X_train, y_train, epochs = 5, batch_size = 64):
+    def train_CNN(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, regularization = 0.01):
         
         flatten_y = [category for sublist in y_train for category in sublist]
         class_weights = class_weight.compute_class_weight('balanced', np.unique(flatten_y), flatten_y)
+        optim = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
         model = models.Sequential()
         model.add(Embedding(self.max_word_count, self.embedding_dim))
@@ -72,7 +77,7 @@ class TextClassifier:
         model.add(Conv1D(300, 3, padding='valid', activation='relu', strides=1))
         model.add(GlobalMaxPool1D())
         model.add(Dense(8, activation='sigmoid'))
-        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['categorical_accuracy'])
+        model.compile(loss='binary_crossentropy', optimizer=optim, metrics=['categorical_accuracy'])
         history = model.fit(X_train, y_train, class_weight = class_weight, epochs = epochs,
                             batch_size=batch_size, validation_split=0.1,
                             callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
@@ -80,19 +85,20 @@ class TextClassifier:
         self.model_cnn = model
         return history
     
-    def train_MLP(self, X_train, y_train, epochs = 5, batch_size = 64):
+    def train_MLP(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, reg = 0.01):
         
         flatten_y = [category for sublist in y_train for category in sublist]
         class_weights = class_weight.compute_class_weight('balanced', np.unique(flatten_y), flatten_y)
+        optim = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
         model = models.Sequential()
-        model.add(Dense(512, activation='relu', input_shape=(self.max_sequence_len,)))
+        model.add(Dense(512, activation='relu', kernel_regularizer=regularizers.l2(reg), input_shape=(self.max_sequence_len,)))
         model.add(Dropout(0.2))
         for _ in range(3):
             model.add(Dense(256, activation='relu'))
             model.add(Dropout(0.2))
         model.add(Dense(8, activation='sigmoid'))
-        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['categorical_accuracy'])
+        model.compile(loss='binary_crossentropy', optimizer=optim, metrics=['categorical_accuracy'])
         history = model.fit(X_train, y_train, class_weight = class_weight, epochs = epochs,
                             batch_size=batch_size, validation_split=0.1,
                             callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
@@ -159,6 +165,20 @@ class TextClassifier:
             raise ValueError('Model not defined')
 
         return test_loss, test_acc
+    
+    def train(self, X_train, y_train, model_name, epochs = 5, batch_size = 64,
+                   learning_rate = 0.001, regularization = 0.01):
+        if model_name == 'LSTM':
+            history = self.train_LSTM(X_train, y_train, epochs, batch_size, learning_rate, regularization)
+        elif model_name == 'CNN':
+            history = self.train_CNN(X_train, y_train, epochs, batch_size, learning_rate, regularization)
+        elif model_name == 'MLP':
+            history = self.train_MLP(X_train, y_train, epochs, batch_size, learning_rate, regularization)
+        else:
+            raise ValueError('Model not defined')
+        
+        return history
+        
     
 
 def split_to_sentences(paragraph):
