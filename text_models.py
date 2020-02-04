@@ -122,10 +122,15 @@ class TextClassifier:
 
         seq = self.tokenizer.texts_to_sequences(review)
         padded = pad_sequences(seq, maxlen = self.max_sequence_len)
+        
         if model_name == 'LSTM':
             pred = self.model_lstm.predict(padded)
         elif model_name == 'CNN':
             pred = self.model_cnn.predict(padded)
+        elif model_name == 'MLP':
+            pred = self.model_mlp.predict(padded)
+        else:
+            raise ValueError('Model not defined')
 
         pred_id = np.argmax(pred, axis=1)
         conf = pred[np.arange(len(review)), pred_id]
@@ -142,6 +147,18 @@ class TextClassifier:
                 prediction_list.append((c, self.label_index[i], block))
 
         return prediction_list
+    
+    def evaluate(self, X_test, y_test, model_name):
+        if model_name == 'LSTM':
+            test_loss, test_acc = self.model_lstm.evaluate(X_test,y_test)
+        elif model_name == 'CNN':
+            test_loss, test_acc = self.model_cnn.evaluate(X_test,y_test)
+        elif model_name == 'MLP':
+            test_loss, test_acc = self.model_mlp.evaluate(X_test,y_test)
+        else:
+            raise ValueError('Model not defined')
+
+        return test_loss, test_acc
     
 
 def split_to_sentences(paragraph):
