@@ -27,6 +27,17 @@ class TextClassifier:
         self.model_mlp = None
 
     def train_LSTM(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, reg = 0.01):
+        """
+        Trains LSTM
+        - X_train: Input sequence
+        - y_train: Target sequence
+        - epochs
+        - batch_size
+        - learning_rate = Adam optimizer's learning rate
+        - reg: Regularization
+        Returns :
+        - history: Scalar loss
+        """
 
         flatten_y = [category for sublist in y_train for category in sublist]
         class_weights = class_weight.compute_class_weight('balanced', np.unique(flatten_y), flatten_y)
@@ -48,7 +59,17 @@ class TextClassifier:
         return history
 
     def train_LSTM_1(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, reg = 0.01):
-
+        """
+        Trains LSTM
+        - X_train: Input sequence
+        - y_train: Target sequence
+        - epochs
+        - batch_size
+        - learning_rate = Adam optimizer's learning rate
+        - reg: Regularization
+        Returns :
+        - history: Scalar loss
+        """
         flatten_y = [category for sublist in y_train for category in sublist]
         class_weights = class_weight.compute_class_weight('balanced', np.unique(flatten_y), flatten_y)
         optim = tf.keras.optimizers.Adam(learning_rate=learning_rate)
@@ -70,7 +91,17 @@ class TextClassifier:
         return history
     
     def train_CNN(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, regularization = 0.01):
-        
+        """
+        Trains CNN
+        - X_train: Input sequence
+        - y_train: Target sequence
+        - epochs
+        - batch_size
+        - learning_rate = Adam optimizer's learning rate
+        - reg: Regularization
+        Returns :
+        - history: Scalar loss
+        """
         flatten_y = [category for sublist in y_train for category in sublist]
         class_weights = class_weight.compute_class_weight('balanced', np.unique(flatten_y), flatten_y)
         optim = tf.keras.optimizers.Adam(learning_rate=learning_rate)
@@ -90,7 +121,17 @@ class TextClassifier:
         return history
     
     def train_MLP(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, reg = 0.01):
-        
+        """
+        Trains LSTM
+        - X_train: Input sequence
+        - y_train: Target sequence
+        - epochs
+        - batch_size
+        - learning_rate = Adam optimizer's learning rate
+        - reg: Regularization
+        Returns :
+        - history: Scalar loss
+        """        
         flatten_y = [category for sublist in y_train for category in sublist]
         class_weights = class_weight.compute_class_weight('balanced', np.unique(flatten_y), flatten_y)
         optim = tf.keras.optimizers.Adam(learning_rate=learning_rate)
@@ -109,27 +150,16 @@ class TextClassifier:
         self.model_mlp = model
         return history    
     
-    def tokenize_data(self, X, y):
-        
-        self.tokenizer = Tokenizer(num_words=self.max_word_count, filters='!"#$%&()*+,-./:;<=>?@[\]^_`{|}~', lower=True)
-        self.tokenizer.fit_on_texts(X)
-        word_index = self.tokenizer.word_index
-        
-        X_tokenized = self.tokenizer.texts_to_sequences(X)
-        X_tokenized = pad_sequences(X_tokenized, maxlen = self.max_sequence_len)
-
-        mlb = MultiLabelBinarizer()
-        y_tokenized = mlb.fit_transform(y)
-        
-        self.label_index = mlb.classes_
-        
-        print('Shape of data tensor:', X.shape)
-        print('Found %s unique tokens.' % len(word_index))
-        
-        return X_tokenized, y_tokenized
-    
     def predict(self, review, model_name):
-
+        """
+        This function takes in a list of sentences as input, performs binary classification for each 
+        of the categories, and selects a sentence for prediction if it's confidence is > 0.5 for a
+        particular category.
+        - review: list of sentences to be classified
+        - model_name: Model type
+        Returns :
+        - prediction_list: A list of important sentences in the form of (confidence, category, sentence) 
+        """
         seq = self.tokenizer.texts_to_sequences(review)
         padded = pad_sequences(seq, maxlen = self.max_sequence_len)
         
@@ -214,6 +244,13 @@ def clean_data(text):
     return text
 
 def extract_text_blocks(review):
+    """
+    This functions splits the string into sentence, then does basic text cleansing
+    and flattens the list of sentences.
+    - review: Review in the form of a string
+    Returns :
+    - flat_list: A flattened list of sentences 
+    """
     sentences = split_to_sentences(review)
     text_block = [sentence.split(",") for sentence in sentences]
     flat_list = [clean_data(block) for sublist in text_block for block in sublist]
