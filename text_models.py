@@ -172,6 +172,9 @@ class TextClassifier:
         else:
             raise ValueError('Model not defined')
 
+        # Note this below logic only returns the topmost index, but it can also be 
+        # easily tuned to return multiple categories by replacing argmax with a list of 
+        #id's with conf > 0.5
         pred_id = np.argmax(pred, axis=1)
         conf = pred[np.arange(len(review)), pred_id]
         conf[conf < 0.5] = 0
