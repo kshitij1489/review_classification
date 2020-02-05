@@ -171,25 +171,26 @@ class TextClassifier:
             pred = self.model_mlp.predict(padded)
         else:
             raise ValueError('Model not defined')
+        
+        filtered_indices = np.where(np.array(pred) > 0.5)
+        i_review, j_label = filtered_indices[0], filtered_indices[1]
 
-        # Note this below logic only returns the topmost index, but it can also be 
-        # easily tuned to return multiple categories by replacing argmax with a list of 
-        #id's with conf > 0.5
-        pred_id = np.argmax(pred, axis=1)
-        conf = pred[np.arange(len(review)), pred_id]
-        conf[conf < 0.5] = 0
-
-        prediction_list = self.return_labels(conf, pred_id, review)
+        prediction_list = self.return_labels(i_review, j_label, pred, review)
 
         return prediction_list
 
-    def return_labels(self, conf, pred_id, review):
-        prediction_list = []
-        for c,i, block in zip(conf, pred_id, review):
-            if c != 0:
-                prediction_list.append((c, self.label_index[i], block))
+    def return_labels(self, i_review, j_label, pred, review):
+        prediction_dict = {}
+        for i, j in zip(i_review, j_label):
+            category = self.label_index[j]
+            conf = pred[i,j]
+            block = review[i]
+            if i in prediction_dict:
+                prediction_dict[i][0].append((conf, category))
+            else:
+                prediction_dict[i] = ([(conf, category)], block)
 
-        return prediction_list
+        return list(prediction_dict.values())
     
     def evaluate(self, X_test, y_test, model_name):
         if model_name == 'LSTM':
