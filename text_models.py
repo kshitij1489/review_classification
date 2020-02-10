@@ -25,6 +25,8 @@ class TextClassifier:
         self.model_lstm = None
         self.model_cnn = None
         self.model_mlp = None
+        self.model_cnn_glove = None
+        self.embedding_matrix_glove = None
 
     def train_LSTM(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, reg = 0.01):
         """
@@ -44,7 +46,7 @@ class TextClassifier:
         optim = tf.keras.optimizers.Adam(learning_rate=learning_rate)
         
         model = models.Sequential()
-        model.add(Embedding(self.max_word_count, self.embedding_dim))
+        model.add(Embedding(input_dim=self.max_word_count, output_dim=self.embedding_dim))
         model.add(SpatialDropout1D(0.2))
         model.add(LSTM(100, dropout=0.2, recurrent_dropout=0.2))
         model.add(Dense(32, activation='relu'))
@@ -56,6 +58,7 @@ class TextClassifier:
                     callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
         
         self.model_lstm = model
+        self.model_lstm.summary()
         return history
 
     def train_LSTM_1(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, reg = 0.01):
@@ -107,9 +110,8 @@ class TextClassifier:
         optim = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
         model = models.Sequential()
-        model.add(Embedding(self.max_word_count, self.embedding_dim))
-        model.add(Dropout(rate=0.1))
-        model.add(Conv1D(300, 3, padding='valid', activation='relu', strides=1))
+        model.add(Embedding(input_dim=self.max_word_count, output_dim=self.embedding_dim)) 
+        model.add(Conv1D(filters=300, kernel_size=3, padding='valid', activation='relu', strides=1)) 
         model.add(GlobalMaxPool1D())
         model.add(Dense(8, activation='sigmoid'))
         model.compile(loss='binary_crossentropy', optimizer=optim, metrics=['categorical_accuracy'])
@@ -118,6 +120,78 @@ class TextClassifier:
                             callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
 
         self.model_cnn = model
+        self.model_cnn.summary()
+        return history
+    
+    def train_CNN_Glove(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, regularization = 0.01):
+        """
+        Trains CNN
+        - X_train: Input sequence
+        - y_train: Target sequence
+        - epochs
+        - batch_size
+        - learning_rate = Adam optimizer's learning rate
+        - reg: Regularization
+        Returns :
+        - history: Scalar loss
+        """
+        flatten_y = [category for sublist in y_train for category in sublist]
+        class_weights = class_weight.compute_class_weight('balanced', np.unique(flatten_y), flatten_y)
+        optim = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+        
+        self.embedding_index_glove = load_glove_embedding()
+        embedding_matrix = self.create_embedding_matrix(self.embedding_index_glove)
+
+        model = models.Sequential()
+        model.add(Embedding(input_dim=self.max_word_count, output_dim=100,
+                            embeddings_initializer = initializers.Constant(embedding_matrix),
+                            input_length=self.max_sequence_len, trainable=False))
+        model.add(Conv1D(filters=300, kernel_size=3, padding='valid', activation='relu', strides=1))
+        model.add(GlobalMaxPool1D())
+        model.add(Dense(8, activation='sigmoid'))
+        model.compile(loss='binary_crossentropy', optimizer=optim, metrics=['categorical_accuracy'])
+        history = model.fit(X_train, y_train, class_weight = class_weight, epochs = epochs,
+                            batch_size=batch_size, validation_split=0.1,
+                            callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
+
+        self.model_cnn_glove = model
+        self.model_cnn_glove.summary()
+        return history
+    
+    
+    def train_CNN_Glove_1(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, regularization = 0.01):
+        """
+        Trains CNN
+        - X_train: Input sequence
+        - y_train: Target sequence
+        - epochs
+        - batch_size
+        - learning_rate = Adam optimizer's learning rate
+        - reg: Regularization
+        Returns :
+        - history: Scalar loss
+        """
+        flatten_y = [category for sublist in y_train for category in sublist]
+        class_weights = class_weight.compute_class_weight('balanced', np.unique(flatten_y), flatten_y)
+        optim = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+        
+        self.embedding_index_glove = load_glove_embedding()
+        embedding_matrix = self.create_embedding_matrix(self.embedding_index_glove)
+
+        model = models.Sequential()
+        model.add(Embedding(self.max_word_count, 100, embeddings_initializer = initializers.Constant(embedding_matrix),
+                            input_length=self.max_sequence_len, trainable=False))
+        model.add(Conv1D(filters=128, kernel_size=5, padding='valid', activation='relu', strides=1))
+        model.add(Conv1D(filters=256, kernel_size=3, padding='valid', activation='relu', strides=1))
+        model.add(GlobalMaxPool1D())
+        model.add(Dense(8, activation='sigmoid'))
+        model.compile(loss='binary_crossentropy', optimizer=optim, metrics=['categorical_accuracy'])
+        history = model.fit(X_train, y_train, class_weight = class_weight, epochs = epochs,
+                            batch_size=batch_size, validation_split=0.1,
+                            callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
+
+        self.model_cnn_glove = model
+        self.model_cnn_glove.summary()
         return history
     
     def train_MLP(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, reg = 0.01):
@@ -148,6 +222,7 @@ class TextClassifier:
                             batch_size=batch_size, validation_split=0.1,
                             callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
         self.model_mlp = model
+        self.model_mlp.summary()
         return history    
     
     def predict(self, review, model_name):
@@ -169,6 +244,8 @@ class TextClassifier:
             pred = self.model_cnn.predict(padded)
         elif model_name == 'MLP':
             pred = self.model_mlp.predict(padded)
+        elif model_name == 'CNN_Glove':
+            pred = self.model_cnn_glove.predict(padded)
         else:
             raise ValueError('Model not defined')
         
@@ -199,6 +276,8 @@ class TextClassifier:
             test_loss, test_acc = self.model_cnn.evaluate(X_test,y_test)
         elif model_name == 'MLP':
             test_loss, test_acc = self.model_mlp.evaluate(X_test,y_test)
+        elif model_name == 'CNN_Glove':
+            test_loss, test_acc = self.model_cnn_glove.evaluate(X_test,y_test)
         else:
             raise ValueError('Model not defined')
 
@@ -212,10 +291,31 @@ class TextClassifier:
             history = self.train_CNN(X_train, y_train, epochs, batch_size, learning_rate, regularization)
         elif model_name == 'MLP':
             history = self.train_MLP(X_train, y_train, epochs, batch_size, learning_rate, regularization)
+        elif model_name == 'CNN_Glove':
+            history = self.train_CNN_Glove(X_train, y_train, epochs, batch_size, learning_rate, regularization)
         else:
             raise ValueError('Model not defined')
         
         return history
+    
+    def create_embedding_matrix(self, embeddings_index):
+        
+        embedding_matrix = np.zeros((50000, 100))
+        for word, index in self.tokenizer.word_index.items():
+            if index > 50000 - 1:
+                break
+            else:
+                if word in embeddings_index:
+                    embedding_matrix[index] = embeddings_index[word]
+                    
+        return embedding_matrix
+    
+    def load_glove(self):
+        
+        if self.embedding_index_glove is None:
+            return load_glove_embedding()
+        
+        return self.embedding_index_glove
         
 
 def tokenize_data(X, y, max_word_count=50000, max_sequence_len=100):
@@ -256,6 +356,21 @@ def extract_text_blocks(review):
     - flat_list: A flattened list of sentences 
     """
     sentences = split_to_sentences(review)
-    text_block = [sentence.split(",") for sentence in sentences]
-    flat_list = [clean_data(block) for sublist in text_block for block in sublist]
-    return flat_list
+    #text_block = [sentence.split(",") for sentence in sentences]
+    #flat_list = [clean_data(block) for sublist in text_block for block in sublist]
+    #return flat_list
+    return sentences
+
+def load_glove_embedding():
+    
+    embeddings_index = dict()
+    f = open('glove.6B.100d.txt')
+    for line in f:
+        values = line.split()
+        word = values[0]
+        coefs = np.asarray(values[1:], dtype='float32')
+        embeddings_index[word] = coefs
+    f.close()
+    
+    return embeddings_index
+    
