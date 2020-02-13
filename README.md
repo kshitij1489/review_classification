@@ -13,3 +13,10 @@ implemented models.
 
 - review_classifier.ipynb is the dashboard which contains the comparison between the different models and hyperparameters.
 
+## References
+
+Pre-trained GLoVe embedding file at https://nlp.stanford.edu/projects/glove/
+
+<a id="1">[1]</a> 
+Yoon Kim (2014). 
+Convolutional Neural Networks for Sentence Classification. [arxiv link](http://arxiv.org/abs/1408.5882)
