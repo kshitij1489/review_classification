@@ -8,11 +8,13 @@ from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.utils import class_weight
 
 from tensorflow.python.keras import models, initializers, regularizers
+from tensorflow.python.keras.metrics import BinaryAccuracy, Accuracy
 from tensorflow.python.keras.preprocessing.text import Tokenizer
 from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 from tensorflow.python.keras.layers import Dense, Conv1D, Dropout, Embedding, LSTM, SpatialDropout1D, GlobalMaxPool1D, Bidirectional
 
 from tensorflow.python.keras.callbacks import EarlyStopping
+from helper import load_glove_embedding, return_labels
 
 _embedding_index_glove = None
 
@@ -53,7 +55,7 @@ class TextClassifier:
         model.add(LSTM(100, dropout=0.2, recurrent_dropout=0.2))
         model.add(Dense(32, activation='relu'))
         model.add(Dense(8, activation='sigmoid'))
-        model.compile(loss='binary_crossentropy', optimizer=optim, metrics=['categorical_accuracy'])
+        model.compile(loss='binary_crossentropy', optimizer=optim, metrics=[BinaryAccuracy()])
 
         history = model.fit(X_train, y_train, class_weight = class_weight, epochs = epochs,
                     batch_size=batch_size, validation_split=0.1, verbose = self.verbose,
@@ -85,7 +87,7 @@ class TextClassifier:
         model.add(Dense(64, kernel_regularizer=regularizers.l2(reg), activation='relu'))
         model.add(Dropout(0.5))
         model.add(Dense(8, activation='sigmoid'))
-        model.compile(loss='binary_crossentropy', optimizer=optim, metrics=['categorical_accuracy'])
+        model.compile(loss='binary_crossentropy', optimizer=optim, metrics=[BinaryAccuracy()])
         
         history = model.fit(X_train, y_train, class_weight = class_weight, epochs = epochs,
             batch_size=batch_size, validation_split=0.1, verbose = self.verbose,
@@ -115,7 +117,7 @@ class TextClassifier:
         model.add(Conv1D(filters=300, kernel_size=3, padding='valid', activation='relu', strides=1)) 
         model.add(GlobalMaxPool1D())
         model.add(Dense(8, activation='sigmoid'))
-        model.compile(loss='binary_crossentropy', optimizer=optim, metrics=['categorical_accuracy'])
+        model.compile(loss='binary_crossentropy', optimizer=optim, metrics=[BinaryAccuracy()])
         history = model.fit(X_train, y_train, class_weight = class_weight, epochs = epochs,
                             batch_size=batch_size, validation_split=0.1, verbose = self.verbose,
                             callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
@@ -148,7 +150,7 @@ class TextClassifier:
         model.add(Conv1D(filters=300, kernel_size=3, padding='valid', activation='relu', strides=1))
         model.add(GlobalMaxPool1D())
         model.add(Dense(8, activation='sigmoid'))
-        model.compile(loss='binary_crossentropy', optimizer=optim, metrics=['categorical_accuracy'])
+        model.compile(loss='binary_crossentropy', optimizer=optim, metrics=[BinaryAccuracy()])
         history = model.fit(X_train, y_train, class_weight = class_weight, epochs = epochs,
                             batch_size=batch_size, validation_split=0.1, verbose = self.verbose,
                             callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
@@ -181,7 +183,7 @@ class TextClassifier:
         model.add(Conv1D(filters=256, kernel_size=3, padding='valid', activation='relu', strides=1))
         model.add(GlobalMaxPool1D())
         model.add(Dense(8, activation='sigmoid'))
-        model.compile(loss='binary_crossentropy', optimizer=optim, metrics=['categorical_accuracy'])
+        model.compile(loss='binary_crossentropy', optimizer=optim, metrics=[BinaryAccuracy()])
         history = model.fit(X_train, y_train, class_weight = class_weight, epochs = epochs,
                             batch_size=batch_size, validation_split=0.1,
                             callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
@@ -213,7 +215,7 @@ class TextClassifier:
             model.add(Dense(256, activation='relu'))
             model.add(Dropout(0.2))
         model.add(Dense(8, activation='sigmoid'))
-        model.compile(loss='binary_crossentropy', optimizer=optim, metrics=['categorical_accuracy'])
+        model.compile(loss='binary_crossentropy', optimizer=optim, metrics=[BinaryAccuracy()])
         history = model.fit(X_train, y_train, class_weight = class_weight, epochs = epochs,
                             batch_size=batch_size, validation_split=0.1, verbose = self.verbose,
                             callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
@@ -255,22 +257,9 @@ class TextClassifier:
         filtered_indices = np.where(np.array(pred) > 0.5)
         i_review, j_label = filtered_indices[0], filtered_indices[1]
 
-        prediction_list = self.return_labels(i_review, j_label, pred, review)
+        prediction_list = self.return_labels(i_review, j_label, pred, review, self.label_index)
 
         return prediction_list
-
-    def return_labels(self, i_review, j_label, pred, review):
-        prediction_dict = {}
-        for i, j in zip(i_review, j_label):
-            category = self.label_index[j]
-            conf = pred[i,j]
-            block = review[i]
-            if i in prediction_dict:
-                prediction_dict[i][0].append((conf, category))
-            else:
-                prediction_dict[i] = ([(conf, category)], block)
-
-        return prediction_dict
     
     def evaluate(self, X_test, y_test):
         
@@ -341,17 +330,4 @@ def extract_text_blocks(review):
     #flat_list = [clean_data(block) for sublist in text_block for block in sublist]
     #return flat_list
     return sentences
-
-def load_glove_embedding():
-    
-    embeddings_index = dict()
-    f = open('glove.6B.100d.txt')
-    for line in f:
-        values = line.split()
-        word = values[0]
-        coefs = np.asarray(values[1:], dtype='float32')
-        embeddings_index[word] = coefs
-    f.close()
-    
-    return embeddings_index
     
