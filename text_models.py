@@ -310,14 +310,14 @@ class TextClassifier:
 
         return prediction_list
     
-    def evaluate(self, X_test, X_test):
+    def evaluate(self, X_test, y_test):
         """
         Model evaluation on the test set. It uses the binary accuracy metric to compute the score
         
         Note: The Attention model has a different api and won't be supported here.
         
         - X_test: 
-        - X_test: 
+        - y_test: 
         Returns :
         - test_loss: Binary cross entropy loss 
         - test_acc: binary accuracy score
