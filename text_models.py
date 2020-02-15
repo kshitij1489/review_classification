@@ -226,7 +226,19 @@ class TextClassifier:
         self.history = history.history
         
     def _train_Attention(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, reg = 0.01):
-
+        """
+        Trains BI-LSTM with Attention. Reference: https://www.aclweb.org/anthology/P16-2034/
+        Note: this is model has a different api and was included here to be compatible with the cross-validation
+        code in the notebook.
+        - X_train: Input sequence
+        - y_train: Target sequence
+        - epochs
+        - batch_size
+        - learning_rate = Adam optimizer's learning rate
+        - reg: Regularization
+        Returns :
+        - history: Scalar loss
+        """
         X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=1)
         # Split data into batches of 64
         train_dset = Dataset(X_train, y_train, batch_size=batch_size, shuffle=True)
@@ -247,6 +259,17 @@ class TextClassifier:
 
     def train(self, X_train, y_train, model_name, epochs = 5, batch_size = 64,
                    learning_rate = 0.001, regularization = 0.01):
+        """
+        An api for training the model
+        - X_train: Input sequence
+        - y_train: Target sequence
+        - epochs
+        - batch_size
+        - learning_rate = Adam optimizer's learning rate
+        - reg: Regularization
+        Returns :
+        - history: Scalar loss
+        """        
         if model_name == 'LSTM':
             self._train_LSTM(X_train, y_train, epochs, batch_size, learning_rate, regularization)
         elif model_name == 'CNN':
@@ -267,6 +290,9 @@ class TextClassifier:
         This function takes in a list of sentences as input, performs binary classification for each 
         of the categories, and selects a sentence for prediction if it's confidence is > 0.5 for a
         particular category.
+        
+        Note: The Attention model has a different api and won't be supported here.
+        
         - review: list of sentences to be classified
         - model_name: Model type
         Returns :
@@ -284,14 +310,34 @@ class TextClassifier:
 
         return prediction_list
     
-    def evaluate(self, X_test, y_test):
+    def evaluate(self, X_test, X_test):
+        """
+        Model evaluation on the test set. It uses the binary accuracy metric to compute the score
         
+        Note: The Attention model has a different api and won't be supported here.
+        
+        - X_test: 
+        - X_test: 
+        Returns :
+        - test_loss: Binary cross entropy loss 
+        - test_acc: binary accuracy score
+        """ 
         test_loss, test_acc = self.model.evaluate(X_test,y_test)
 
         return test_loss, test_acc
     
     def create_embedding_matrix(self):
+        """
+        Model evaluation on the test set. It uses the binary accuracy metric to compute the score
         
+        Note: The Attention model has a different api and won't be supported here.
+        
+        - X_test: 
+        - X_test: 
+        Returns :
+        - test_loss: Binary cross entropy loss 
+        - test_acc: binary accuracy score
+        """         
         self.load_glove()
         
         embedding_matrix = np.zeros((50000, 100))
@@ -305,14 +351,29 @@ class TextClassifier:
         return embedding_matrix
     
     def load_glove(self):
-        
+        """
+        This function loads the glove embedding values in the global variable.
+        It avoids reloading the same instance over and over.
+        """         
         global _embedding_index_glove
         
         if _embedding_index_glove is None:
             _embedding_index_glove =  load_glove_embedding()
 
 def tokenize_data(X, y, max_word_count=50000, max_sequence_len=100):
-
+    """
+    This function tokenizes the text blocks, pads the tokenized text blocks to 
+    have uniform length.
+    - X: list of strings
+    - y: list of strings
+    - max_word_count: 
+    - max_sequence_len:
+    Returns :
+    - X_tokenized: Tokenized X
+    - y_tokenized: Tokenized y
+    - tokenizer: tokenizer object, which contains all the mapping of words and indices
+    - label_index: index to word mapping, a dict
+    """
     tokenizer = Tokenizer(num_words=max_word_count, filters='!"#$%&()*+,-./:;<=>?@[\]^_`{|}~', lower=True)
     tokenizer.fit_on_texts(X)
     word_index = tokenizer.word_index
@@ -331,9 +392,21 @@ def tokenize_data(X, y, max_word_count=50000, max_sequence_len=100):
     return X_tokenized, y_tokenized, tokenizer, label_index
 
 def split_to_sentences(paragraph):
+    """
+    This function uses the nltk library to split a document into sentences
+    - paragraph: String
+    Returns :
+    - tokenized: list of sentences
+    """
     return tokenize.sent_tokenize(paragraph)
 
 def clean_data(text):
+    """
+    This function cleans up the string by removing trailing spaces and punctutations.
+    - text: String
+    Returns :
+    - text: 
+    """
     text = text.lower().strip()
     text = text.strip(".")
     # Remove double space

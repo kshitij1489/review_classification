@@ -11,7 +11,10 @@ device = '/cpu:0'
 class AttentionLSTM(tf.keras.Model):
     def __init__(self, sequence_length, embedding_dim):
         super(AttentionLSTM, self).__init__()
-
+        '''
+        This model is an implementation of Attention-Based Bidirectional LSTM for text Classification
+        The reference paper used for this architecture was: https://www.aclweb.org/anthology/P16-2034/
+        '''
         self.H_LSTM, self.sequence_length, num_classes = 64, sequence_length, 8
         
         initializer = tf.initializers.VarianceScaling(scale=2.0)
@@ -53,8 +56,23 @@ class AttentionLSTM(tf.keras.Model):
         
         return out
 
-def train_part(model, train_dset, val_dset, num_epochs=1, is_training=False, learning_rate=1e-3, verbose=1):
-    
+def train_part(model, train_dset, val_dset, num_epochs=1, is_training=True, learning_rate=1e-3, verbose=1):
+    """
+    This function is a general purpose training function which optimizes loss function using Adam optimizer.
+    The loss function defined here is BinaryCrossentropy. It runs batches for gradient updates for the 
+    specified number of epochs. It returns a history of loss and accuracy measure for the training and validation set.
+    - model: 
+    - train_dset: Test dataset
+    - val_dset: Validation dataset
+    - num_epochs: Number of epochs to run
+    - is_training: 
+    - learning_rate: Learning rate of the optimizer
+    - verbose: Decides weather to print the accuracy after each epoch
+    Returns :
+    - loss value
+    - score after forward pass
+    - gradient tape
+    """    
     history = {'loss' : [], 'val_loss' : [], 'accuracy' : [], 'val_accuracy' : []}
     
     with tf.device(device):
@@ -108,16 +126,48 @@ def train_part(model, train_dset, val_dset, num_epochs=1, is_training=False, lea
 
 
 def grad(model, loss_fn, inputs, targets):
+    """
+    Modular function to compute the gradent, 
+    loss score, and forward pass scoe
+    - model: 
+    - loss_fn: 
+    - inputs: X values
+    - targets: y values
+    Returns :
+    - loss value
+    - score after forward pass
+    - gradient tape
+    """
     with tf.GradientTape() as tape:
         loss_value, score = loss(model, loss_fn, inputs, targets, training=True)
     return loss_value, score, tape.gradient(loss_value, model.trainable_variables)
 
 def loss(model, loss_fn, x, y, training):
+    """
+    Modular function for computing the loss value and the 
+    out value of the forward pass of the model
+    - model: 
+    - loss_fn: 
+    - x: 
+    - y:
+    - training:    
+    Returns :
+    - loss value
+    - score after forward pass
+    """    
     y_ = model(x, training=training)
     return loss_fn(y_true=y, y_pred=y_), y_
     
 def evaluate(model, test_dataset):
-    
+    """
+    Model evaluation on the test set. It uses the binary accuracy metric to compute the score
+
+    - model: 
+    - test_dataset: X, y pair
+    Returns :
+    - test_loss: Binary cross entropy loss 
+    - test_acc: binary accuracy score
+    """
     test_accuracy = tf.keras.metrics.BinaryAccuracy()
     test_loss = tf.keras.metrics.Mean()
     loss_fn = tf.keras.losses.BinaryCrossentropy()
@@ -130,6 +180,13 @@ def evaluate(model, test_dataset):
     return test_loss.result().numpy() , test_accuracy.result().numpy()
                     
 def create_matrix_with_kaiming_normal(shape):
+    """
+    kaiming normal initialization for dense layer.
+
+    - shape: 
+    Returns :
+    - random_normal tensor
+    """    
     if len(shape) == 2:
         fan_in, fan_out = shape[0], shape[1]
     elif len(shape) == 4:
@@ -137,6 +194,16 @@ def create_matrix_with_kaiming_normal(shape):
     return tf.keras.backend.random_normal(shape) * np.sqrt(2.0 / fan_in)
 
 def predict_labels(review, model, tokenizer, label_index):
+    """
+    This function takes in list of sentences, runs prediction on each sentence,
+    removes all the sentences whose confidence was less than 0.5.
+    - review: list of raw sentences
+    - model: Model object
+    - tokenizer: 
+    - label_index:
+    Returns :
+    - prediction_list: a dictionary with key: index, value: ([(confidence, label) ... (confidence, label)], sentence)
+    """
     seq = tokenizer.texts_to_sequences(review)
     padded = pad_sequences(seq, maxlen = 100)
     pred = helper.predict(model, padded)
