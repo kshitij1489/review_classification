@@ -53,8 +53,10 @@ class AttentionLSTM(tf.keras.Model):
         
         return out
 
-def train_part(model, train_dset, val_dset, num_epochs=1, is_training=False, print_every = 100):
-
+def train_part(model, train_dset, val_dset, num_epochs=1, is_training=False):
+    
+    history = {'loss' : [], 'val_loss' : [], 'accuracy' : [], 'val_accuracy' : []}
+    
     with tf.device(device):
         
         train_loss = tf.keras.metrics.Mean(name='train_loss')
@@ -66,13 +68,15 @@ def train_part(model, train_dset, val_dset, num_epochs=1, is_training=False, pri
         loss_fn = tf.keras.losses.BinaryCrossentropy()
         optimizer = tf.keras.optimizers.Adam(1e-3)
         
-        t = 0
         for epoch in range(num_epochs):
             
             # Reset the metrics - https://www.tensorflow.org/alpha/guide/migration_guide#new-style_metrics
             train_loss.reset_states()
             train_accuracy.reset_states()
+            val_loss.reset_states()
+            val_accuracy.reset_states()
             
+            # Train for one epoch
             for x_np, y_np in train_dset:
                 # Use the model function to build the forward pass.
                 loss_value, scores, grads = grad(model, loss_fn, x_np, y_np)
@@ -81,21 +85,25 @@ def train_part(model, train_dset, val_dset, num_epochs=1, is_training=False, pri
                 # Update the metrics
                 train_loss.update_state(loss_value)
                 train_accuracy.update_state(y_np, scores)
+                
+            # Evaluate validation set after one epoch
+            for test_x, test_y in val_dset:
+                # During validation at end of epoch, training set to False
+                t_loss, prediction = loss(model, loss_fn, test_x, test_y, training=False)
 
-                if t % print_every == 0:
-                    val_loss.reset_states()
-                    val_accuracy.reset_states()
-                    for test_x, test_y in val_dset:
-                        # During validation at end of epoch, training set to False
-                        t_loss, prediction = loss(model, loss_fn, test_x, test_y, training=False)
+                val_loss.update_state(t_loss)
+                val_accuracy.update_state(test_y, prediction)
 
-                        val_loss.update_state(t_loss)
-                        val_accuracy.update_state(test_y, prediction)
-
-                    template = 'Iteration {}, Epoch {}, Loss: {}, Accuracy: {}, Val Loss: {}, Val Accuracy: {}'
-                    print (template.format(t, epoch+1,train_loss.result(), train_accuracy.result()*100,
-                                           val_loss.result(),val_accuracy.result()*100))
-                t += 1
+            history['loss'].append(train_loss.result().numpy())
+            history['val_loss'].append(val_loss.result().numpy())
+            history['accuracy'].append(train_accuracy.result().numpy())
+            history['val_accuracy'].append(val_accuracy.result().numpy())
+                
+            template = 'Epoch {}, Loss: {}, Accuracy: {}, Val Loss: {}, Val Accuracy: {}'
+            print (template.format(epoch+1,train_loss.result(), train_accuracy.result()*100,
+                                   val_loss.result(), val_accuracy.result()*100))
+            
+    return history
 
 
 def grad(model, loss_fn, inputs, targets):
@@ -108,16 +116,17 @@ def loss(model, loss_fn, x, y, training):
     return loss_fn(y_true=y, y_pred=y_), y_
     
 def evaluate(model, test_dataset):
+    
     test_accuracy = tf.keras.metrics.BinaryAccuracy()
+    test_loss = tf.keras.metrics.Mean()
+    loss_fn = tf.keras.losses.BinaryCrossentropy()
+    
     for (x, y) in test_dataset:
-        # training=False is needed only if there are layers with different
-        # behavior during training versus inference (e.g. Dropout).
-        logits = model(x, training=False)
-        #prediction = tf.argmax(logits, axis=1, output_type=tf.int32)
-        test_accuracy(y, logits)
+        t_loss, prediction = loss(model, loss_fn, x, y, training=False)
+        test_accuracy.update_state(y, prediction)
+        test_loss.update_state(t_loss)
 
-    print("Test set accuracy: {:.3%}".format(test_accuracy.result()))
-    return test_accuracy
+    return test_loss.result().numpy() , test_accuracy.result().numpy()
                     
 def create_matrix_with_kaiming_normal(shape):
     if len(shape) == 2:

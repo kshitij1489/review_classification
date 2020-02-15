@@ -58,7 +58,7 @@ class TextClassifier:
         model.compile(loss='binary_crossentropy', optimizer=optim, metrics=[BinaryAccuracy()])
 
         history = model.fit(X_train, y_train, class_weight = class_weight, epochs = epochs,
-                    batch_size=batch_size, validation_split=0.1, verbose = self.verbose,
+                    batch_size=batch_size, validation_split=0.25, verbose = self.verbose,
                     callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
         
         self.model = model
@@ -90,7 +90,7 @@ class TextClassifier:
         model.compile(loss='binary_crossentropy', optimizer=optim, metrics=[BinaryAccuracy()])
         
         history = model.fit(X_train, y_train, class_weight = class_weight, epochs = epochs,
-            batch_size=batch_size, validation_split=0.1, verbose = self.verbose,
+            batch_size=batch_size, validation_split=0.25, verbose = self.verbose,
             callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
 
         self.model = model
@@ -119,7 +119,7 @@ class TextClassifier:
         model.add(Dense(8, activation='sigmoid'))
         model.compile(loss='binary_crossentropy', optimizer=optim, metrics=[BinaryAccuracy()])
         history = model.fit(X_train, y_train, class_weight = class_weight, epochs = epochs,
-                            batch_size=batch_size, validation_split=0.1, verbose = self.verbose,
+                            batch_size=batch_size, validation_split=0.25, verbose = self.verbose,
                             callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
 
         self.model = model
@@ -152,7 +152,7 @@ class TextClassifier:
         model.add(Dense(8, activation='sigmoid'))
         model.compile(loss='binary_crossentropy', optimizer=optim, metrics=[BinaryAccuracy()])
         history = model.fit(X_train, y_train, class_weight = class_weight, epochs = epochs,
-                            batch_size=batch_size, validation_split=0.1, verbose = self.verbose,
+                            batch_size=batch_size, validation_split=0.25, verbose = self.verbose,
                             callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
 
         self.model = model
@@ -185,7 +185,7 @@ class TextClassifier:
         model.add(Dense(8, activation='sigmoid'))
         model.compile(loss='binary_crossentropy', optimizer=optim, metrics=[BinaryAccuracy()])
         history = model.fit(X_train, y_train, class_weight = class_weight, epochs = epochs,
-                            batch_size=batch_size, validation_split=0.1,
+                            batch_size=batch_size, validation_split=0.25,
                             callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
 
         self.model = model
@@ -217,7 +217,7 @@ class TextClassifier:
         model.add(Dense(8, activation='sigmoid'))
         model.compile(loss='binary_crossentropy', optimizer=optim, metrics=[BinaryAccuracy()])
         history = model.fit(X_train, y_train, class_weight = class_weight, epochs = epochs,
-                            batch_size=batch_size, validation_split=0.1, verbose = self.verbose,
+                            batch_size=batch_size, validation_split=0.25, verbose = self.verbose,
                             callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
 
         
