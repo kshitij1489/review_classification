@@ -14,7 +14,8 @@ from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 from tensorflow.python.keras.layers import Dense, Conv1D, Dropout, Embedding, LSTM, SpatialDropout1D, GlobalMaxPool1D, Bidirectional
 
 from tensorflow.python.keras.callbacks import EarlyStopping
-from helper import load_glove_embedding, return_labels
+from helper import load_glove_embedding, return_labels, Dataset
+from lstm_attention_model import AttentionLSTM, train_part, evaluate, predict_labels
 
 _embedding_index_glove = None
 
@@ -62,7 +63,7 @@ class TextClassifier:
                     callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
         
         self.model = model
-        self.history = history
+        self.history = history.history
 
     def _train_LSTM_1(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, reg = 0.01):
         """
@@ -94,7 +95,7 @@ class TextClassifier:
             callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
 
         self.model = model
-        self.history = history
+        self.history = history.history
     
     def _train_CNN(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, regularization = 0.01):
         """
@@ -123,7 +124,7 @@ class TextClassifier:
                             callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
 
         self.model = model
-        self.history = history
+        self.history = history.history
     
     def _train_CNN_Glove(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, regularization = 0.01):
         """
@@ -156,7 +157,7 @@ class TextClassifier:
                             callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
 
         self.model = model
-        self.history = history
+        self.history = history.history
     
     def _train_CNN_Glove_1(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, regularization = 0.01):
         """
@@ -189,7 +190,7 @@ class TextClassifier:
                             callbacks=[EarlyStopping(monitor='val_loss', patience=3, min_delta=0.0001)])
 
         self.model = model
-        self.history = history
+        self.history = history.history
 
     
     def _train_MLP(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, reg = 0.01):
@@ -222,7 +223,27 @@ class TextClassifier:
 
         
         self.model = model
+        self.history = history.history
+        
+    def _train_Attention(self, X_train, y_train, epochs = 5, batch_size = 64, learning_rate = 0.001, reg = 0.01):
+
+        X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=1)
+        # Split data into batches of 64
+        train_dset = Dataset(X_train, y_train, batch_size=batch_size, shuffle=True)
+        val_dset = Dataset(X_val, y_val, batch_size=batch_size, shuffle=True)
+        
+        model = AttentionLSTM(self.max_sequence_len, self.embedding_dim)
+        
+        history = train_part(model, train_dset, val_dset,num_epochs=10,
+                             is_training=True, learning_rate=learning_rate, verbose=self.verbose)
+        
+        # Update the key name for consistency.
+        history['binary_accuracy'] = history.pop('accuracy')
+        history['val_binary_accuracy'] = history.pop('val_accuracy')
+        
+        self.model = model
         self.history = history
+        
 
     def train(self, X_train, y_train, model_name, epochs = 5, batch_size = 64,
                    learning_rate = 0.001, regularization = 0.01):
@@ -234,6 +255,8 @@ class TextClassifier:
             self._train_MLP(X_train, y_train, epochs, batch_size, learning_rate, regularization)
         elif model_name == 'CNN_Glove':
             self._train_CNN_Glove(X_train, y_train, epochs, batch_size, learning_rate, regularization)
+        elif model_name == 'Attention':
+            self._train_Attention(X_train, y_train, epochs, batch_size, learning_rate, regularization)  
         else:
             raise ValueError('Model not defined')
 
@@ -257,7 +280,7 @@ class TextClassifier:
         filtered_indices = np.where(np.array(pred) > 0.5)
         i_review, j_label = filtered_indices[0], filtered_indices[1]
 
-        prediction_list = self.return_labels(i_review, j_label, pred, review, self.label_index)
+        prediction_list = return_labels(i_review, j_label, pred, review, self.label_index)
 
         return prediction_list
     

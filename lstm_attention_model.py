@@ -53,7 +53,7 @@ class AttentionLSTM(tf.keras.Model):
         
         return out
 
-def train_part(model, train_dset, val_dset, num_epochs=1, is_training=False):
+def train_part(model, train_dset, val_dset, num_epochs=1, is_training=False, learning_rate=1e-3, verbose=1):
     
     history = {'loss' : [], 'val_loss' : [], 'accuracy' : [], 'val_accuracy' : []}
     
@@ -66,7 +66,7 @@ def train_part(model, train_dset, val_dset, num_epochs=1, is_training=False):
         val_accuracy = tf.keras.metrics.BinaryAccuracy(name='val_accuracy')
         
         loss_fn = tf.keras.losses.BinaryCrossentropy()
-        optimizer = tf.keras.optimizers.Adam(1e-3)
+        optimizer = tf.keras.optimizers.Adam(learning_rate)
         
         for epoch in range(num_epochs):
             
@@ -99,9 +99,10 @@ def train_part(model, train_dset, val_dset, num_epochs=1, is_training=False):
             history['accuracy'].append(train_accuracy.result().numpy())
             history['val_accuracy'].append(val_accuracy.result().numpy())
                 
-            template = 'Epoch {}, Loss: {}, Accuracy: {}, Val Loss: {}, Val Accuracy: {}'
-            print (template.format(epoch+1,train_loss.result(), train_accuracy.result()*100,
-                                   val_loss.result(), val_accuracy.result()*100))
+            if verbose:
+                template = 'Epoch {}, Loss: {}, Accuracy: {}, Val Loss: {}, Val Accuracy: {}'
+                print (template.format(epoch+1,train_loss.result(), train_accuracy.result()*100,
+                                       val_loss.result(), val_accuracy.result()*100))
             
     return history
 
