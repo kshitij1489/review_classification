@@ -25,7 +25,7 @@ Model architectures experimented with:
    - Input -> Word Embedding Layer -> Bi-LSTM -> Attention layer -> Fully Connected -> Sigmoid
    
 
-
+### Files
 
 - review_classifier.ipynb is the dashboard which trains, tests and fine tune all the 5 mentioned models. This notebook takes you through a step-by-step process of data pre-processing to Model selection.
 
